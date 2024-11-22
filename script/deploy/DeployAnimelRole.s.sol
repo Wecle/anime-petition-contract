@@ -4,104 +4,69 @@ pragma solidity ^0.8.0;
 import {Script, console} from "forge-std/Script.sol";
 import {ConfigScript} from "../ConfigScript.s.sol";
 import {ConfigTools} from "../ScriptTools.sol";
-import {stdJson} from "forge-std/StdJson.sol";
-
-import {Upgrades} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 import {AnimeRole} from "../../src/nft/AnimeRole.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-contract DeployScript is ConfigScript {
-    using ConfigTools for string;
-    using stdJson for string;
-
-    uint256 deployerPrivateKey;
-    address deployer;
-
-    address owner;
-    address proxyAdmin;
-
-    address animeRoleProxy;
-    address animeRoleImpl;
-    string[] animeRoleUris;
-
-    uint256 currentNftid;
+contract DeployAnimelRole is ConfigScript {
+    address public animeRoleProxy;
+    address public animeRoleImpl;
+    uint256 public currentNftid;
+    string[] public animeRoleUris;
+    address public deployer;
+    uint256 public deployerPrivateKey;
 
     function setUp() public override {
         super.setUp();
 
-        parseConfig();
+        // Initialize deployer
         deployerPrivateKey = vm.envUint("DEPLOY_KEY");
         deployer = vm.addr(deployerPrivateKey);
 
-        require(owner == deployer, "owner not match deployer");
-    }
-
-    function parseConfig() internal {
-        owner = config.readAddress(".owner");
-        proxyAdmin = config.readAddress(".proxyAdmin");
-        
-        // nft config
+        // Initialize URIs
         animeRoleUris = new string[](3);
-        animeRoleUris[0] = config.readString(".sasukeUrl");
-        animeRoleUris[1] = config.readString(".narutoUrl");
-        animeRoleUris[2] = config.readString(".sakuraUrl");
+        animeRoleUris[0] = "https://gateway.pinata.cloud/ipfs/QmSnqJqZUfwEafVnn4ftzxgrFiED531segL36c9A9MdRL9";
+        animeRoleUris[1] = "https://gateway.pinata.cloud/ipfs/QmWsUwVmeTgan7LwsRsHdvMqwycmEuhErnyAjQUk4j5Y7J";
+        animeRoleUris[2] = "https://gateway.pinata.cloud/ipfs/QmbioTx6h7aCBwJMaF1sqcCPUrZBaeY96FWHKwc4sVBSHv";
     }
 
     function run() public {
-        console.log("owner: ", owner, ", deployer: ", deployer);
-        console.log("proxyAdmin: ", proxyAdmin);
-
-        console.log("=== 1/ nft config ===");
-        console.log("sasukeUrl: ", animeRoleUris[0]);
-        console.log("narutoUrl: ", animeRoleUris[1]);
-        console.log("sakuraUrl: ", animeRoleUris[2]);
-
-        console.log("\n");
-
-        deployAnimeRole();
-
-        console.log("\n");
-        console.log("=== 2/ nft info ===");
-        console.log(
-            "animelRole name: ", AnimeRole(animeRoleProxy).name(), ", symbol: ", AnimeRole(animeRoleProxy).symbol()
-        );
-        currentNftid = AnimeRole(animeRoleProxy).nftId();
-        console.log("already published nft id: ", currentNftid);
-        for (uint256 i = 0; i < currentNftid; i++) {
-            console.log("nft id: ", i, ", uri: ", AnimeRole(animeRoleProxy).uri(i));
-            console.log("nft max: ", AnimeRole(animeRoleProxy).maxSupply(i));
-        }
-
-        exportContracts();
-    }
-
-    function deployAnimeRole() internal {
         vm.startBroadcast(deployerPrivateKey);
-        // deploy anime role
-        animeRoleProxy = Upgrades.deployTransparentProxy(
-            "AnimeRole.sol",
-            proxyAdmin,
-            abi.encodeCall(
-                AnimeRole.initialize, (animeRoleUris, block.timestamp)
-            )
+
+        // Deploy implementation contract
+        AnimeRole implementation = new AnimeRole();
+        animeRoleImpl = address(implementation);
+
+        // Deploy proxy admin
+        ProxyAdmin proxyAdmin = new ProxyAdmin(deployer);
+
+        // Initialize implementation
+        bytes memory initData = abi.encodeCall(AnimeRole.initialize, (animeRoleUris, block.timestamp));
+
+        // Deploy proxy
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            animeRoleImpl,
+            address(proxyAdmin),
+            initData
         );
-        animeRoleImpl = Upgrades.getImplementationAddress(animeRoleProxy);
+        animeRoleProxy = address(proxy);
+
+        // Log deployment info
+        console.log("Implementation deployed at:", animeRoleImpl);
+        console.log("Proxy deployed at:", animeRoleProxy);
+        console.log("Proxy Admin:", address(proxyAdmin));
+        console.log("Deployer:", deployer);
+
+        // Export contract addresses
+        exportContracts();
 
         vm.stopBroadcast();
-    }
-
-    
-    function exportAnimeRole() internal {
-        string memory configName = ConfigTools.getConfigName();
-        ConfigTools.exportContract(configName, "animeRoleProxy", animeRoleProxy);
-        ConfigTools.exportContract(configName, "animeRoleImpl", animeRoleImpl);
     }
 
     function exportContracts() internal {
         string memory configName = ConfigTools.getConfigName();
         ConfigTools.exportContract(configName, "deployer", deployer);
-        ConfigTools.exportContract(configName, "owner", owner);
-        ConfigTools.exportContract(configName, "proxyAdmin", proxyAdmin);
-
-        exportAnimeRole();
+        ConfigTools.exportContract(configName, "animeRoleProxy", animeRoleProxy);
+        ConfigTools.exportContract(configName, "animeRoleImpl", animeRoleImpl);
     }
 }
