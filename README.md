@@ -14,18 +14,6 @@ Foundry consists of:
 https://book.getfoundry.sh/
 
 ## Usage
-forge install ProjectOpenSea/operator-filter-registry@v1.4.2 --no-git
-forge install OpenZeppelin/openzeppelin-contracts@v5.1.0 --no-git
-forge install OpenZeppelin/openzeppelin-contracts-upgradeable@v5.1.0  --no-git
-forge install foundry-rs/forge-std --no-git
-forge install OpenZeppelin/openzeppelin-foundry-upgrades --no-git
-
-cp env/localhostchain/.env_localhostchain .env
-forge clean && forge build
-forge script script/deploy/DeployAnimelRole.s.sol --chain-id 31337 --rpc-url http://localhost:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 -vvvv
-模拟购买NFT
-forge script script/run/RunAnimeRole.s.sol --chain-id 31337 --rpc-url http://localhost:8545 --broadcast --private-key 0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a --sender 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC -vvvv
-
 ### Build
 
 ```shell
@@ -59,7 +47,7 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ forge script script/deploy/DeployAnimelRole.s.sol --rpc-url <your_rpc_url> --private-key <your_private_key>
 ```
 
 ### Cast
@@ -74,4 +62,45 @@ $ cast <subcommand>
 $ forge --help
 $ anvil --help
 $ cast --help
+```
+
+## Example
+### Install lib
+```shell
+forge install ProjectOpenSea/operator-filter-registry@v1.4.2 --no-git
+forge install OpenZeppelin/openzeppelin-contracts@v5.1.0 --no-git
+forge install OpenZeppelin/openzeppelin-contracts-upgradeable@v5.1.0  --no-git
+forge install foundry-rs/forge-std --no-git
+forge install OpenZeppelin/openzeppelin-foundry-upgrades --no-git
+```
+### Init Smart Contract
+```shell
+cp env/localhostchain/.env_localhostchain .env
+forge clean && forge build
+```
+### Deploy
+#### Start the Anvil Network
+```shell
+anvil --port 9545
+```
+#### Connect with MetaMask
+1. Choose any Private Key to import MetaMask
+  - Open MetaMask
+  - Click on the account icon
+  - Select "Import Account"
+  - Paste one of the private keys from Anvil (without the 0x prefix)
+2. Add Anvil Network
+  - Network Name: Anvil
+  - RPC URL: http://127.0.0.1:9545
+  - Chain ID: 31337
+  - Currency Symbol: ETH
+
+#### Deploy Smart Contract
+```shell
+forge script script/deploy/DeployAnimelRole.s.sol:DeployAnimelRole --rpc-url http://127.0.0.1:9545 --private-key <your_private_key>
+```
+### Script
+```shell
+forge script script/deploy/DeployAnimelRole.s.sol --chain-id 31337 --rpc-url http://localhost:8545 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 -vvvv
+模拟购买NFT
 ```
